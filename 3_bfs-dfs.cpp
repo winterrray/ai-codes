@@ -1,37 +1,46 @@
 #include <iostream>
 #include <vector>
+#include <queue>
 using namespace std;
 
-void BFS(int start, vector <vector <int>> &edges, vector <bool> &visited, int n) {
-    int q[20];
-    int front=0, rear=0;
+void BFS(int start, vector <vector <int>> &edges, vector <bool> &visited1, int n) {
+    // int q[20], front=0, rear=0;
+    queue<int> q;
 
-    q[rear++]=start;
+    // q[rear++]=start;
+    q.push(start);
     
-    visited[start] = true;
+    visited1[start] = true;
 
-    while (front < rear) {
-        int node = q[front++];
+    // while (front < rear) {
+    while (!q.empty()) {
+    
+        // int node = q[front++];
+        int node = q.front();
+        q.pop();
 
         cout << node << " ";
 
-        for (int i = 0; i < n; i++) {
-            if (edges[node][i] == 1 && !visited[i]) {
-                q[rear++] = i;
+        if(goal == node) break;
 
-                visited[i] = true;
+        for (int i = node; i < edges.size(); i++) {
+            if (edges[node][i] == 1 && !visited1[i]) {
+                // q[rear++] = i;
+                q.push(i);
+                visited1[i] = true;
             }
         }
     }    
 }
 
-void DFS (int node, vector <vector <int>> &edges, vector<bool> &visited, int n) {
-    visited[node] = true;
+
+void DFS (int node, vector <vector <int>> &edges, vector<bool> &visited2, int n) {
+    visited2[node] = true;
     cout << node << " ";
 
     for (int i = 0; i < n; i++) {
         if (!visited[i] && edges[node][i]==1) {
-            DFS(i, edges, visited, n);
+            DFS(i, edges, visited2, n);
         }
     }    
 }
@@ -42,7 +51,8 @@ int main() {
     cin >> n >> e;
 
     vector<vector<int>> edges(n, vector<int>(n, 0));
-    vector<bool> visited(n, false);
+    vector<bool> visited1(n, false);
+    vector<bool> visited2(n, false);
 
     cout << "Enter the edges :" << endl;
     for (int i = 0; i < e; i++) {
@@ -57,10 +67,10 @@ int main() {
     cin >> startNode;
 
     cout << "BFS starting from node " << startNode << ": ";
-    BFS(startNode, edges, visited, n);
+    BFS(startNode, edges, visited1, n);
 
     cout << "DFS starting from node " << startNode << ": ";
-    DFS(startNode, edges, visited, n);
+    DFS(startNode, edges, visited2, n);
 
     return 0;
 }
