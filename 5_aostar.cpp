@@ -1,75 +1,136 @@
 #include <iostream>
+#include <climits>
 #include <vector>
-#include <queue>
-#include <unordered_map>
-#include <tuple>
 using namespace std;
 
-vector<vector<pair<int, int>>> g = {
-    {{0, -1}, {1,  3}, {0, -1}, {1, -1}, {0, -1}},
-    {{1, -1}, {0, -1}, {0, -1}, {0, -1}, {0, -1}},
-    {{1, -1}, {0, -1}, {0 ,-1}, {0, -1}, {1, -1}},
-    {{1, -1}, {0, -1}, {0 ,-1}, {0, -1}, {1, -1}},
-    {{0, -1}, {1, -1}, {0, -1}, {1, -1}, {0, -1}}
+#define MAX_NODES 50
+
+// Node structure to store node properties
+struct Node {
+    int id;                 // Unique identifier for the node
+    int heuristic;          // Heuristic value of the node
+    bool visited;           // Flag to check if the node is visited
+    int optimal;            // Index of the optimal child
+    int num_children;       // Number of children the node has
+    vector<int> children;   // List of child node IDs
+    vector<int> type;       // List of connection types (AND/OR)
+    vector<int> cost;       // List of costs to each child node
 };
 
-struct compare{
-    bool operator()(pair<int, int> a, pair<int, int> b){
-        return a.second > b.second;
+// Global graph (array of nodes)
+Node graph[MAX_NODES];
+int num_nodes, num_connections;
+
+void inputGraph() {
+    cout << "Enter the number of nodes: ";
+    cin >> num_nodes;
+
+    cout << "Enter node id and heuristics of each node:\n";
+    for (int i = 0; i < num_nodes; i++) {
+        // graph[i].id = i;
+        graph[i].visited = false;
+        graph[i].optimal = -1;
+        graph[i].num_children = 0;
+        cin >> graph[i].id >> graph[i].heuristic;
     }
-};
 
-void ao_star(vector<int> h, int start, int end){
-    priority_queue<pair<int, int>, vector<pair<int, int>>, compare> pq;
+    cout << "Enter the number of connections: ";
+    cin >> num_connections;
 
-    vector<int> visited(g.size(), 0);
-    vector<int> dist(g.size(), INT_MAX);
+    cout << "Enter parent_id child_id cost AND/OR (1 for AND, 0 for OR):\n";
+    for (int i = 0; i < num_connections; i++) {
+        int parent, child, cost, type;
+        cin >> parent >> child >> cost >> type;
 
-    dist[start] = 0;
-    pq.push({start, h[start]});
+        graph[parent].children.push_back(child);
+        graph[parent].cost.push_back(cost);
+        graph[parent].type.push_back(type);
+        graph[parent].num_children++;
+    }
+}
 
-    while(!pq.empty()){
-        start = pq.top().first;
-        pq.pop();
-        if(visited[start] == 1) continue;
-        visited[start] = true;
-        cout << start << " ";
+void aoStar(int node) {
+    if (graph[node].visited) {
+        return;
+    }
 
-        if(start == end){
-            cout << endl;
-            cout << "reached!!" << endl;
-            return;
+    graph[node].visited = true;
+
+    int min_heuristic = INT_MAX;
+    int selected_child = -1;
+
+    for (int i = 0; i < graph[node].num_children; i++) {
+        int child = graph[node].children[i];
+
+        if (!graph[child].visited) {
+            // Expand the child first
+            aoStar(child);
         }
 
-        for(int i = 0;i < g.size();i++){
-            pair<int, int> neigh = g[start][i];
-            int edge = neigh.first;
-            int and_v = neigh.second;
-            if(edge == 1 && visited[i] == 0){
-                int cost = dist[start];
-                if(and_v != -1 && visited[and_v] == 0){
-                    if(cost < dist[i]){
-                        dist[i] = cost;
-                        // pq.push({i, h[i] + h[and_v] + cost});
-                        // pq.push({and_v, h[i] + h[and_v] + cost});
-                        pq.push({i, h[i] + cost});
-                        pq.push({and_v, h[and_v] + cost});
-                    }
-                }else{
-                    if(cost < dist[i]){
-                        dist[i] = cost;
-                        pq.push({i, h[i] + cost});
-                    }
+        // OR connection
+        if (graph[node].type[i] == 0) {
+            int current_heuristic = graph[child].heuristic + graph[node].cost[i];
+            if (current_heuristic < min_heuristic) {
+                min_heuristic = current_heuristic;
+                selected_child = i;
+            }
+        }
+        // AND connection
+        else if (graph[node].type[i] == 1) {
+            int total_cost = 0;
+
+            for (int j = 0; j < graph[node].num_children; j++) {
+                if (graph[node].type[j] == 1) {
+                    int sibling = graph[node].children[j];
+                    total_cost += graph[sibling].heuristic + graph[node].cost[j];
                 }
+            }
+            if (total_cost < min_heuristic) {
+                min_heuristic = total_cost;
+                selected_child = i;
             }
         }
     }
-    cout << "can't reach" << endl;
+
+    if (min_heuristic != INT_MAX) {
+        graph[node].heuristic = min_heuristic;
+        graph[node].optimal = selected_child;
+    }
 }
 
-int main(){
-    vector<int> h = {3, 2, 7, 3, 0};
-    int start = 0;
-    int end = 4;
-    ao_star(h, start, end);
+void printOptimalPath(int node) {
+    cout << node << " ";
+    if (graph[node].num_children == 0) {
+        // It's a leaf node
+        return;
+    }
+
+    int optimal_child = graph[node].optimal;
+
+    if (graph[node].type[optimal_child] == 0) {
+        printOptimalPath(graph[node].children[optimal_child]);
+    }
+    else if (graph[node].type[optimal_child] == 1) {
+        for (int i = 0; i < graph[node].num_children; i++) {
+            if (graph[node].type[i] == 1) {
+                printOptimalPath(graph[node].children[i]);
+            }
+        }
+    }
+}
+
+int main() {
+    inputGraph();
+    aoStar(0);
+
+    cout << "\nUpdated Heuristics:\n";
+    for (int i = 0; i < num_nodes; i++) {
+        cout << "Node " << i << ": Heuristic = " << graph[i].heuristic << endl;
+    }
+
+    cout << "\nOptimal Path: ";
+    printOptimalPath(0);
+    cout << "\n";
+
+    return 0;
 }
