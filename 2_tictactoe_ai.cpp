@@ -1,162 +1,128 @@
 #include <iostream>
-#include <time.h>
+#include <limits>
+
 using namespace std;
 
-void display(char board[3][3]) {
-    cout << endl << "|";
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            cout << " " << board[i][j] << " |";
-        }
-        cout << endl;
-        if (i != 2) {
-            cout << "-------------\n|";
-        }
-    }
-    cout <<endl;
-}
+char board[9] = {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
+char player = 'X', ai = 'O';
 
-int isGameOver(char board[3][3], char symbol) {
-    for (int i = 0; i < 3; i++) {   // row
-        if (board[i][0] == symbol && board[i][1] == symbol && board[i][2] == symbol)
-            return 1;
-    }
-
-    for (int i = 0; i < 3; i++) {   // col
-        if (board[0][i] == symbol && board[1][i] == symbol && board[2][i] == symbol)
-            return 1;
-    }
-
-    if ((board[0][0] == symbol && board[1][1] == symbol && board[2][2] == symbol) ||
-        (board[0][2] == symbol && board[1][1] == symbol && board[2][0] == symbol))  // diag
-        return 1;
-
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            if (board[i][j] == ' ')
-                return 0;
-        }
-    }
-    return -1;  // Game is a tie
-}
-
-void playerMove(char board[3][3]) {
-    int row, col;
-    cout << "Enter your move (row [0-2] and column [0-2]): ";
-    scanf("%d %d", &row, &col);
-
-    if (row < 0 || row >= 3 || col < 0 || col >= 3 || board[row][col] != ' ') {
-        cout << "Invalid move. Try again.\n";
-        playerMove(board);
-        return;
-    }
-
-    board[row][col] = 'X';
-}
-
-int minimax(char board[3][3], int depth, int isMaximizingPlayer) {
-    int result = isGameOver(board, 'X');
-    if (result != 0) {
-        return result * depth;
-    }
-
-    result = isGameOver(board, 'O');
-    if (result != 0) {
-        return result * depth;
-    }
-
-    if (isMaximizingPlayer) {
-        int bestScore = INT_MIN;
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                if (board[i][j] == ' ') {
-                    board[i][j] = 'O';
-                    int score = minimax(board, depth + 1, 0);
-                    board[i][j] = ' ';
-                    if (score > bestScore) {
-                        bestScore = score;
-                    }
-                }
-            }
-        }
-        return bestScore;
-
-    } else {
-        int bestScore = INT_MAX;
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                if (board[i][j] == ' ') {
-                    board[i][j] = 'X';
-                    int score = minimax(board, depth + 1, 1);
-                    board[i][j] = ' ';
-                    if (score < bestScore) {
-                        bestScore = score;
-                    }
-                }
-            }
-        }
-        return bestScore;
+void display() {
+    for (int i=0; i<9; i++) {
+        if (i==0) cout << "\n|";
+        if (i==3 || i==6) cout << "\n-------------\n|";
+        cout << " " << board[i] << " |";
     }
 }
 
-void compMove(char board[3][3]) {
+bool isBoardFull() {
+    for (char c : board) {
+        if (c == ' ') {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool hasWon(char currentPlayer) {
+    return (board[0] == currentPlayer && board[1] == currentPlayer && board[2] == currentPlayer) ||     // row
+           (board[3] == currentPlayer && board[4] == currentPlayer && board[5] == currentPlayer) ||     // row
+           (board[6] == currentPlayer && board[7] == currentPlayer && board[8] == currentPlayer) ||     // row
+           (board[0] == currentPlayer && board[3] == currentPlayer && board[6] == currentPlayer) ||     // col
+           (board[1] == currentPlayer && board[4] == currentPlayer && board[7] == currentPlayer) ||     // col
+           (board[2] == currentPlayer && board[5] == currentPlayer && board[8] == currentPlayer) ||     // col
+           (board[0] == currentPlayer && board[4] == currentPlayer && board[8] == currentPlayer) ||     // diag
+           (board[2] == currentPlayer && board[4] == currentPlayer && board[6] == currentPlayer);       // diag
+}
+
+bool isGameOver() {
+    cout << endl << endl;
+    if (hasWon(player)) {
+        cout << "Player wins!" << endl;
+        return true;
+    }
+    if (hasWon(ai)) {
+        cout << "AI wins!" << endl;
+        return true;
+    }
+    if (isBoardFull()) {
+        cout << "It's a tie!" << endl;
+        return true;
+    }
+    return false;
+}
+
+int minimax(bool isMaximizing) {
+    if (hasWon(ai)) return 1;
+    if (hasWon(player)) return -1;
+    if (isBoardFull()) return 0;
+
+    int bestScore = isMaximizing ? INT_MIN : INT_MAX;
+
+    for (int i = 0; i < 9; i++) {
+        if (board[i] == ' ') {
+            board[i] = isMaximizing ? ai : player;
+            int score = minimax(!isMaximizing);
+            board[i] = ' ';
+            bestScore = isMaximizing ? max(score, bestScore) : min(score, bestScore);
+        }
+    }
+    return bestScore;
+}
+
+void aiMove() {
     int bestScore = INT_MIN;
-    int bestRow, bestCol;
+    int move = -1;
 
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            if (board[i][j] == ' ') {
-                board[i][j] = 'O';
-                int score = minimax(board, 0, 0);
-                board[i][j] = ' ';
-
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestRow = i;
-                    bestCol = j;
-                }
+    for (int i = 0; i < 9; i++) {
+        if (board[i] == ' ') {
+            board[i] = ai;
+            int score = minimax(false);
+            board[i] = ' ';
+            if (score > bestScore) {
+                bestScore = score;
+                move = i;
             }
         }
     }
-    board[bestRow][bestCol] = 'O';
+    board[move] = ai;
+    cout << "\n\nAI chose position " << (move + 1) << endl;
+    display();
+}
+
+void playerMove() {
+    int move;
+    while (true) {
+        cout << "\nEnter your move (1-9): ";
+        cin >> move;
+        move -= 1;
+        if (move >= 0 && move < 9 && board[move] == ' ') {
+            board[move] = player;
+            break;
+        }
+        cout << "Invalid move, try again." << endl;
+    }
+    display();
 }
 
 int main() {
-    char board[3][3];
-
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            board[i][j] = ' ';
-        }
-    }
-
-    cout << "Tic Tac Toe - Player vs. Computer\n";
+    cout << "\nTic Tac Toe - Player vs. Computer\n";
     cout << "---------------------------------\n";
 
-    int currentPlayer = 0;
+    display();
 
     while (true) {
-        display(board);
+        // aiMove();
+        // if (isGameOver()) break;
 
-        if (currentPlayer == 0)
-            playerMove(board);
-        else
-            compMove(board);
+        // playerMove();
+        // if (isGameOver()) break;
 
-        int result = isGameOver(board, currentPlayer == 0 ? 'X' : 'O');
-        if (result == 1) {
-            display(board);
-            if (currentPlayer == 0)
-                cout << "Player wins!\n";
-            else
-                cout << "Computer wins!\n";
-            break;
-        } else if (result == -1) {
-            display(board);
-            cout << "It's a tie!\n";
-            break;
-        }
-        currentPlayer = 1 - currentPlayer;
+        playerMove();
+        if (isGameOver()) break;
+
+        aiMove();
+        if (isGameOver()) break;
     }
+
     return 0;
 }
